@@ -9,6 +9,7 @@ import { COLORS, SIZES } from '../utils/theme';
 // Screens
 import OwnerDashboard from '../screens/owner/OwnerDashboard';
 import VehicleListScreen from '../screens/owner/VehicleListScreen';
+import VehicleDetailScreen from '../screens/owner/VehicleDetailScreen';
 import AddVehicleScreen from '../screens/owner/AddVehicleScreen';
 import CreateTripScreen from '../screens/owner/CreateTripScreen';
 import TripListScreen from '../screens/owner/TripListScreen';
@@ -62,6 +63,7 @@ export default function OwnerNavigator() {
       <Stack.Screen name="OwnerTabs"   component={OwnerTabs} />
       <Stack.Screen name="AddVehicle"  component={AddVehicleScreen} />
       <Stack.Screen name="VehicleList" component={VehicleListScreen} />
+      <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
       <Stack.Screen name="CreateTrip"  component={CreateTripScreen} />
       <Stack.Screen name="TripList"    component={TripListScreen} />
       <Stack.Screen name="TripDetail"  component={TripDetailScreen} />
