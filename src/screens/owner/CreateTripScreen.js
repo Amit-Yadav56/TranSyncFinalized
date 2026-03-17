@@ -4,20 +4,24 @@ import {
   View, Text, StyleSheet, ScrollView, Alert,
   TouchableOpacity, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { Input, PrimaryButton, ScreenHeader, Card } from '../../components';
 import { COLORS, SIZES, FONTS } from '../../utils/theme';
 
-export default function CreateTripScreen({ navigation }) {
+export default function CreateTripScreen({ navigation, route }) {
   const { user } = useAuth();
+  const tripId = route.params?.tripId;
+  const isEditMode = !!tripId;
   const [form, setForm] = useState({ origin: '', destination: '', scheduledDate: '', notes: '' });
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [pendingDriverId, setPendingDriverId] = useState(null);
+  const [pendingVehicleId, setPendingVehicleId] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -32,31 +36,88 @@ export default function CreateTripScreen({ navigation }) {
     fetch();
   }, []);
 
+  useEffect(() => {
+    const loadTrip = async () => {
+      if (!isEditMode) return;
+      setLoading(true);
+      try {
+        const tripSnap = await getDoc(doc(db, 'trips', tripId));
+        if (!tripSnap.exists()) {
+          Alert.alert('Error', 'Trip not found.');
+          navigation.goBack();
+          return;
+        }
+        const trip = tripSnap.data();
+        setForm({
+          origin: trip.origin || '',
+          destination: trip.destination || '',
+          scheduledDate: trip.scheduledDate
+            ? new Date(trip.scheduledDate.toDate ? trip.scheduledDate.toDate() : trip.scheduledDate).toISOString().slice(0, 10)
+            : '',
+          notes: trip.notes || '',
+        });
+        setPendingDriverId(trip.driverId || null);
+        setPendingVehicleId(trip.vehicleId || null);
+      } catch (e) {
+        Alert.alert('Error', 'Failed to load trip details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTrip();
+  }, [isEditMode, tripId]);
+
+  useEffect(() => {
+    if (pendingDriverId && drivers.length > 0) {
+      setSelectedDriver(drivers.find((d) => d.id === pendingDriverId) || null);
+    }
+  }, [pendingDriverId, drivers]);
+
+  useEffect(() => {
+    if (pendingVehicleId && vehicles.length > 0) {
+      setSelectedVehicle(vehicles.find((v) => v.id === pendingVehicleId) || null);
+    }
+  }, [pendingVehicleId, vehicles]);
+
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  const handleCreate = async () => {
+  const handleSaveTrip = async () => {
     if (!form.origin || !form.destination || !selectedDriver || !selectedVehicle)
       return Alert.alert('Error', 'Please fill all required fields and select a driver & vehicle.');
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'trips'), {
-        ownerId: user.uid,
-        driverId: selectedDriver.id,
-        vehicleId: selectedVehicle.id,
-        origin: form.origin,
-        destination: form.destination,
-        scheduledDate: form.scheduledDate ? new Date(form.scheduledDate) : null,
-        notes: form.notes,
-        status: 'assigned',
-        startTime: null,
-        endTime: null,
-        startLocation: null,
-        endLocation: null,
-        distanceKm: null,
-        createdAt: serverTimestamp(),
-      });
-      Alert.alert('Trip Created!', `Assigned to ${selectedDriver.name}`, [
+      if (isEditMode) {
+        await updateDoc(doc(db, 'trips', tripId), {
+          driverId: selectedDriver.id,
+          vehicleId: selectedVehicle.id,
+          origin: form.origin,
+          destination: form.destination,
+          scheduledDate: form.scheduledDate ? new Date(form.scheduledDate) : null,
+          notes: form.notes,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, 'trips'), {
+          ownerId: user.uid,
+          driverId: selectedDriver.id,
+          vehicleId: selectedVehicle.id,
+          origin: form.origin,
+          destination: form.destination,
+          scheduledDate: form.scheduledDate ? new Date(form.scheduledDate) : null,
+          notes: form.notes,
+          status: 'assigned',
+          startTime: null,
+          endTime: null,
+          startLocation: null,
+          endLocation: null,
+          distanceKm: null,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      Alert.alert(isEditMode ? 'Trip Updated!' : 'Trip Created!', `Assigned to ${selectedDriver.name}`, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
@@ -91,7 +152,7 @@ export default function CreateTripScreen({ navigation }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <ScreenHeader title="Create Trip" onBack={() => navigation.goBack()} />
+        <ScreenHeader title={isEditMode ? 'Edit Trip' : 'Create Trip'} onBack={() => navigation.goBack()} />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
           <Card>
@@ -133,7 +194,7 @@ export default function CreateTripScreen({ navigation }) {
             )}
           </Card>
 
-          <PrimaryButton title="Create & Assign Trip" icon="map-outline" onPress={handleCreate} loading={loading} />
+          <PrimaryButton title={isEditMode ? 'Update Trip' : 'Create & Assign Trip'} icon="map-outline" onPress={handleSaveTrip} loading={loading} />
           <View style={{ height: SIZES.xxxl }} />
         </ScrollView>
       </View>

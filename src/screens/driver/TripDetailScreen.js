@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { db } from '../../services/firebase';
@@ -46,6 +47,12 @@ export default function TripDetailScreen({ navigation, route }) {
     fetchTrip();
     return () => clearInterval(timerRef.current);
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTrip();
+    }, [tripId])
+  );
 
   useEffect(() => {
     if (trip?.status === 'in_progress') {
@@ -148,13 +155,23 @@ export default function TripDetailScreen({ navigation, route }) {
   );
 
   const isDriver = trip.driverId === user.uid;
+  const canEditTrip = !isDriver && trip.status !== 'in_progress';
 
   return (
     <View style={styles.container}>
       <ScreenHeader
         title="Trip Details"
         onBack={() => navigation.goBack()}
-        rightAction={<Badge label={trip.status?.replace('_', ' ')} type={STATUS_TYPE[trip.status]} />}
+        rightAction={
+          <View style={styles.headerActions}>
+            {canEditTrip && (
+              <TouchableOpacity onPress={() => navigation.navigate('CreateTrip', { tripId })}>
+                <Ionicons name="create-outline" size={22} color={COLORS.primary} />
+              </TouchableOpacity>
+            )}
+            <Badge label={trip.status?.replace('_', ' ')} type={STATUS_TYPE[trip.status]} />
+          </View>
+        }
       />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -284,4 +301,5 @@ const styles = StyleSheet.create({
   infoLabel: { color: COLORS.textMuted, fontSize: SIZES.fontXs, ...FONTS.medium },
   infoValue: { color: COLORS.textPrimary, fontSize: SIZES.fontMd, ...FONTS.medium, marginTop: 2 },
   actionRow: { flexDirection: 'row' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: SIZES.sm },
 });

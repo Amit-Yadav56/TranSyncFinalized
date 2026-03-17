@@ -1,9 +1,9 @@
 // src/screens/owner/AddVehicleScreen.js
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity,
 } from 'react-native';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { Input, PrimaryButton, ScreenHeader, Card } from '../../components';
@@ -12,14 +12,56 @@ import { scheduleDateAlert } from '../../services/notifications';
 
 const VEHICLE_TYPES = ['Truck', 'Mini Truck', 'Van', 'Bus', 'Pickup', 'Tanker'];
 
-export default function AddVehicleScreen({ navigation }) {
-  const { userData, user } = useAuth();
+export default function AddVehicleScreen({ navigation, route }) {
+  const { user } = useAuth();
+  const vehicleId = route.params?.vehicleId;
+  const isEditMode = !!vehicleId;
   const [form, setForm] = useState({
     registrationNumber: '', model: '', type: 'Truck',
     serviceIntervalKm: '5000', lastServiceKm: '0',
     currentOdometer: '0', rcExpiry: '', insuranceExpiry: '', pollutionExpiry: '',
   });
   const [loading, setLoading] = useState(false);
+
+  const normalizeDateInput = (value) => {
+    if (!value) return '';
+    const date = value.toDate ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 10);
+  };
+
+  useEffect(() => {
+    const loadVehicle = async () => {
+      if (!isEditMode) return;
+      setLoading(true);
+      try {
+        const snap = await getDoc(doc(db, 'vehicles', vehicleId));
+        if (!snap.exists()) {
+          Alert.alert('Error', 'Vehicle not found.');
+          navigation.goBack();
+          return;
+        }
+        const data = snap.data();
+        setForm({
+          registrationNumber: data.registrationNumber || '',
+          model: data.model || '',
+          type: data.type || 'Truck',
+          serviceIntervalKm: `${data.serviceIntervalKm ?? 5000}`,
+          lastServiceKm: `${data.lastServiceKm ?? 0}`,
+          currentOdometer: `${data.currentOdometer ?? 0}`,
+          rcExpiry: normalizeDateInput(data.rcExpiry),
+          insuranceExpiry: normalizeDateInput(data.insuranceExpiry),
+          pollutionExpiry: normalizeDateInput(data.pollutionExpiry),
+        });
+      } catch (e) {
+        Alert.alert('Error', 'Failed to load vehicle details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVehicle();
+  }, [isEditMode, vehicleId]);
 
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -29,7 +71,7 @@ export default function AddVehicleScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'vehicles'), {
+      const payload = {
         ...form,
         ownerId: user.uid,
         serviceIntervalKm: parseFloat(form.serviceIntervalKm) || 5000,
@@ -38,8 +80,19 @@ export default function AddVehicleScreen({ navigation }) {
         rcExpiry: form.rcExpiry || null,
         insuranceExpiry: form.insuranceExpiry || null,
         pollutionExpiry: form.pollutionExpiry || null,
-        createdAt: serverTimestamp(),
-      });
+      };
+
+      if (isEditMode) {
+        await updateDoc(doc(db, 'vehicles', vehicleId), {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, 'vehicles'), {
+          ...payload,
+          createdAt: serverTimestamp(),
+        });
+      }
 
       // Schedule expiry alerts
       if (form.rcExpiry) {
@@ -57,7 +110,7 @@ export default function AddVehicleScreen({ navigation }) {
         });
       }
 
-      Alert.alert('Success', 'Vehicle added successfully!', [
+      Alert.alert('Success', isEditMode ? 'Vehicle updated successfully!' : 'Vehicle added successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
@@ -70,7 +123,7 @@ export default function AddVehicleScreen({ navigation }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <ScreenHeader title="Add Vehicle" onBack={() => navigation.goBack()} />
+        <ScreenHeader title={isEditMode ? 'Edit Vehicle' : 'Add Vehicle'} onBack={() => navigation.goBack()} />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
           <Card>
@@ -107,7 +160,7 @@ export default function AddVehicleScreen({ navigation }) {
             <Input label="Pollution Certificate Expiry" icon="leaf-outline" placeholder="YYYY-MM-DD" value={form.pollutionExpiry} onChangeText={(v) => update('pollutionExpiry', v)} />
           </Card>
 
-          <PrimaryButton title="Save Vehicle" icon="checkmark-circle-outline" onPress={handleSave} loading={loading} />
+          <PrimaryButton title={isEditMode ? 'Update Vehicle' : 'Save Vehicle'} icon="checkmark-circle-outline" onPress={handleSave} loading={loading} />
           <View style={{ height: SIZES.xxxl }} />
         </ScrollView>
       </View>

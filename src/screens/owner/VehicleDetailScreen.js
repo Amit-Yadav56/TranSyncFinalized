@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { doc, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { db } from '../../services/firebase';
@@ -39,27 +40,33 @@ export default function VehicleDetailScreen({ navigation, route }) {
   const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchVehicle = async () => {
+    if (!vehicleId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const snap = await getDoc(doc(db, 'vehicles', vehicleId));
+      if (snap.exists()) {
+        setVehicle({ id: snap.id, ...snap.data() });
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Unable to load vehicle details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchVehicle = async () => {
-      if (!vehicleId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const snap = await getDoc(doc(db, 'vehicles', vehicleId));
-        if (snap.exists()) {
-          setVehicle({ id: snap.id, ...snap.data() });
-        }
-      } catch (e) {
-        Alert.alert('Error', 'Unable to load vehicle details.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchVehicle();
   }, [vehicleId]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchVehicle();
+    }, [vehicleId])
+  );
 
   const rcStatus = getStatus(vehicle?.rcExpiry);
   const insuranceStatus = getStatus(vehicle?.insuranceExpiry);
@@ -67,7 +74,20 @@ export default function VehicleDetailScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Vehicle Details" onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title="Vehicle Details"
+        onBack={() => navigation.goBack()}
+        rightAction={
+          vehicle ? (
+            <Ionicons
+              name="create-outline"
+              size={22}
+              color={COLORS.primary}
+              onPress={() => navigation.navigate('AddVehicle', { vehicleId })}
+            />
+          ) : null
+        }
+      />
 
       {loading ? (
         <View style={styles.loadingWrap}>
