@@ -1,4 +1,5 @@
 // src/components/index.js
+//hi
 import React from 'react';
 import {
   View, Text, TouchableOpacity, ActivityIndicator,
