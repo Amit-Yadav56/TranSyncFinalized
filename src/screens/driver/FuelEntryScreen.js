@@ -41,6 +41,15 @@ export default function FuelEntryScreen({ navigation, route }) {
 
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('DriverTabs');
+  };
+
   const handleSave = async () => {
     if (!form.liters || !form.pricePerLiter || !form.odometer)
       return Alert.alert('Error', 'Please fill all required fields.');
@@ -79,7 +88,7 @@ export default function FuelEntryScreen({ navigation, route }) {
       }
 
       Alert.alert('Fuel Logged! ⛽', `${liters}L at ₹${pricePerLiter}/L\nTotal: ₹${totalCost.toFixed(0)}\nMileage: ${mileage.toFixed(2)} km/L`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
+        { text: 'OK', onPress: handleBack },
       ]);
     } catch (e) {
       Alert.alert('Error', e.message);
@@ -91,7 +100,7 @@ export default function FuelEntryScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <ScreenHeader title="Log Fuel" subtitle="Enter fuel details for this trip" onBack={() => navigation.goBack()} />
+        <ScreenHeader title="Log Fuel" subtitle="Enter fuel details for this trip" onBack={handleBack} />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
           {vehicle && (

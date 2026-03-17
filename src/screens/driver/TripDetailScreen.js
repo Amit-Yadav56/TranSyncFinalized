@@ -147,9 +147,23 @@ export default function TripDetailScreen({ navigation, route }) {
     ]);
   };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    if (user?.uid && trip?.driverId === user.uid) {
+      navigation.navigate('DriverTabs');
+      return;
+    }
+
+    navigation.navigate('OwnerTabs');
+  };
+
   if (!trip) return (
     <View style={styles.container}>
-      <ScreenHeader title="Trip Details" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Trip Details" onBack={handleBack} />
       <View style={styles.loading}><Ionicons name="reload" size={32} color={COLORS.textMuted} /></View>
     </View>
   );
@@ -161,7 +175,7 @@ export default function TripDetailScreen({ navigation, route }) {
     <View style={styles.container}>
       <ScreenHeader
         title="Trip Details"
-        onBack={() => navigation.goBack()}
+        onBack={handleBack}
         rightAction={
           <View style={styles.headerActions}>
             {canEditTrip && (

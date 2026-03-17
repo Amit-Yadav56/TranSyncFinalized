@@ -21,6 +21,15 @@ const STATUS_TYPE = {
   cancelled: 'danger',
 };
 
+const getGreetingByTime = () => {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  if (hour < 21) return 'Good Evening';
+  return 'Good Night';
+};
+
 export default function OwnerDashboard({ navigation }) {
   const { userData, logout } = useAuth();
   const insets = useSafeAreaInsets();
@@ -28,6 +37,7 @@ export default function OwnerDashboard({ navigation }) {
   const [recentTrips, setRecentTrips] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const greeting = getGreetingByTime();
 
   const fetchData = async () => {
     try {
@@ -87,7 +97,7 @@ export default function OwnerDashboard({ navigation }) {
       <LinearGradient colors={['#111827', '#0A0F1E']} style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.greeting}>Good Morning 👋</Text>
+            <Text style={styles.greeting}>{greeting} 👋</Text>
             <Text style={styles.name}>{userData?.name}</Text>
             <Badge label="Fleet Owner" type="primary" />
           </View>
