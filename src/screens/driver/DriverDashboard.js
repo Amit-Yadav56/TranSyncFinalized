@@ -128,7 +128,7 @@ export default function DriverDashboard({ navigation }) {
                         ? format(new Date(trip.scheduledDate.toDate ? trip.scheduledDate.toDate() : trip.scheduledDate), 'dd MMM yyyy')
                         : 'No date set'}
                     </Text>
-                    {trip.distanceKm && (
+                    {Number(trip.distanceKm) > 0 && (
                       <>
                         <Ionicons name="speedometer-outline" size={13} color={COLORS.textMuted} style={{ marginLeft: SIZES.sm }} />
                         <Text style={styles.tripMetaText}>{trip.distanceKm} km</Text>

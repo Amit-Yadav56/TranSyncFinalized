@@ -81,7 +81,7 @@ export default function TripListScreen({ navigation }) {
 
         {/* Meta */}
         <View style={styles.metaRow}>
-          {item.distanceKm && (
+          {Number(item.distanceKm) > 0 && (
             <View style={styles.metaItem}>
               <Ionicons name="navigate-outline" size={12} color={COLORS.textMuted} />
               <Text style={styles.metaText}>{item.distanceKm} km</Text>

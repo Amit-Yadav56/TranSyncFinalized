@@ -218,7 +218,7 @@ export default function TripDetailScreen({ navigation, route }) {
               </View>
             </View>
           </View>
-          {trip.distanceKm && (
+          {Number(trip.distanceKm) > 0 && (
             <View style={styles.distanceRow}>
               <Ionicons name="navigate-outline" size={14} color={COLORS.textMuted} />
               <Text style={styles.distanceText}>{trip.distanceKm} km traveled</Text>

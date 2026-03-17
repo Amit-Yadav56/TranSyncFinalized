@@ -20,6 +20,15 @@ export default function FuelEntryScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState({ totalCost: 0, mileage: 0 });
 
+  const getMileageFromInputs = (odometerValue, litersValue, baseOdometer) => {
+    const liters = parseFloat(litersValue) || 0;
+    const odometer = parseFloat(odometerValue) || 0;
+    const baseline = Number.isFinite(baseOdometer) ? baseOdometer : 0;
+    const distanceTravelled = Math.max(0, odometer - baseline);
+    if (liters <= 0) return 0;
+    return distanceTravelled / liters;
+  };
+
   useEffect(() => {
     if (vehicleId) {
       getDoc(doc(db, 'vehicles', vehicleId)).then((d) => {
@@ -31,13 +40,10 @@ export default function FuelEntryScreen({ navigation, route }) {
   useEffect(() => {
     const liters = parseFloat(form.liters) || 0;
     const price = parseFloat(form.pricePerLiter) || 0;
-    const odo = parseFloat(form.odometer) || 0;
     const totalCost = liters * price;
-    const mileage = liters > 0 && vehicle?.lastServiceKm
-      ? (odo - vehicle.lastServiceKm) / liters
-      : 0;
+    const mileage = getMileageFromInputs(form.odometer, form.liters, vehicle?.currentOdometer ?? 0);
     setPreview({ totalCost: totalCost.toFixed(2), mileage: mileage.toFixed(2) });
-  }, [form]);
+  }, [form, vehicle]);
 
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -58,8 +64,17 @@ export default function FuelEntryScreen({ navigation, route }) {
     const liters = parseFloat(form.liters);
     const pricePerLiter = parseFloat(form.pricePerLiter);
     const odometer = parseFloat(form.odometer);
+    const previousOdometer = parseFloat(vehicle?.currentOdometer) || 0;
     const totalCost = liters * pricePerLiter;
-    const mileage = vehicle?.lastServiceKm ? (odometer - vehicle.lastServiceKm) / liters : 0;
+    const mileage = getMileageFromInputs(odometer, liters, previousOdometer);
+
+    if (odometer < previousOdometer) {
+      setLoading(false);
+      return Alert.alert(
+        'Invalid Odometer',
+        `Current odometer (${odometer}) cannot be less than previous reading (${previousOdometer}).`
+      );
+    }
 
     try {
       const logRef = await addDoc(collection(db, 'fuelLogs'), {
